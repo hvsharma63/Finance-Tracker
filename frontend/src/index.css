@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: 245 245 243;
+  --surface: 252 252 251;
+  --muted: 240 239 236;
+  --border: 222 221 216;
+  --fg: 11 11 11;
+  --subtle: 82 81 78;
+  --primary: 37 99 235;
+  --positive: 0 99 0;
+  --negative: 185 28 28;
+  --warning: 161 98 7;
+  /* chart tokens: validated categorical slots (dataviz reference palette) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
+  --grid: #e4e3df;
+  --axis: #52514e;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --bg: 17 17 16;
+  --surface: 26 26 25;
+  --muted: 38 38 36;
+  --border: 56 56 53;
+  --fg: 240 239 236;
+  --subtle: 195 194 183;
+  --primary: 96 150 245;
+  --positive: 74 200 74;
+  --negative: 240 110 110;
+  --warning: 250 178 25;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --grid: #2e2e2c;
+  --axis: #c3c2b7;
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-bg text-fg antialiased; font-feature-settings: "tnum" 1; }
+
+.num { font-variant-numeric: tabular-nums; }
+.focus-ring { @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface; }
+
+@media print {
+  aside, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  body { background: white; color: black; }
+}

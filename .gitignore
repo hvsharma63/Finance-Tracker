@@ -1,0 +1,29 @@
+# Secrets and private financial data — never commit
+.env
+.env.*
+!.env.example
+private/
+*.statement.pdf
+sample-data/private/
+backend/tests/fixtures/private/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/e2e/.auth/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
