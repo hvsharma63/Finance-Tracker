@@ -67,4 +67,4 @@ def mask_identifier(s: str | None) -> str | None:
     if not s:
         return None
     digits = re.sub(r"[^0-9]", "", s)
-    return f"XX{digits[-4:]}" if len(digits) >= 4 else s[:8]
+    return f"XX{digits[-4:]}" if digits else None

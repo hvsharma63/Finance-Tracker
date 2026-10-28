@@ -8,7 +8,7 @@ import { fmtDateTime } from "@/lib/format";
 import { useCategories, useMut } from "@/lib/hooks";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const TABS = ["Categories", "Rules", "Merchants", "Matching", "Formats", "Backups", "Security", "Audit log"];
+const TABS = ["Categories", "Rules", "Merchants", "Matching", "Formats", "PDF passwords", "Backups", "Security", "Audit log"];
 const REPORTING = ["income", "expense", "transfer", "investment", "loan_principal", "refund", "cash_withdrawal", "excluded"];
 
 export default function Settings() {
@@ -24,6 +24,7 @@ export default function Settings() {
       {tab === "Merchants" && <Merchants />}
       {tab === "Matching" && <Matching />}
       {tab === "Formats" && <Formats />}
+      {tab === "PDF passwords" && <PdfPasswords />}
       {tab === "Backups" && <Backups />}
       {tab === "Security" && <Security />}
       {tab === "Audit log" && <Audit />}
@@ -280,5 +281,37 @@ function Audit() {
         <tbody>{q.data.map((e) => <tr key={e.id}><td className="whitespace-nowrap text-xs">{fmtDateTime(e.at)}</td><td className="text-xs">{e.entity_type} #{e.entity_id}</td>
           <td>{e.action}</td><td className="max-w-lg truncate text-xs text-subtle">{JSON.stringify(e.details)}</td></tr>)}</tbody></Table>
     </Card>
+  );
+}
+
+function PdfPasswords() {
+  const q = useQuery({ queryKey: ["pdf-passwords"], queryFn: () => api.get<any[]>("/pdf-passwords") });
+  const accounts = useQuery({ queryKey: ["accounts"], queryFn: () => api.get<any[]>("/accounts") });
+  const [f, setF] = useState({ label: "", password: "", account_id: "" });
+  const add = useMut(() => api.post("/pdf-passwords", { label: f.label, password: f.password,
+    account_id: f.account_id ? Number(f.account_id) : null }), () => setF({ label: "", password: "", account_id: "" }));
+  const del = useMut((id: number) => api.del(`/pdf-passwords/${id}`));
+  const name = (id: number | null) => accounts.data?.find((a) => a.id === id)?.name ?? "Any account";
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card title="Saved PDF passwords" subtitle="Tried automatically when a password-protected statement is uploaded. Passwords are encrypted with your SECRET_KEY and are never shown again.">
+        {!q.data?.length ? <p className="text-sm text-subtle">None saved yet. Passwords you type during an import are remembered automatically unless you untick the option.</p> : (
+          <Table><thead><tr><th>Label</th><th>Account</th><th className="text-right">Used</th><th>Last used</th><th /></tr></thead>
+            <tbody>{q.data.map((p) => <tr key={p.id}><td>{p.label}</td><td className="text-xs">{name(p.account_id)}</td>
+              <td className="num text-right">{p.use_count}</td><td className="text-xs">{fmtDateTime(p.last_used_at)}</td>
+              <td><Button size="sm" variant="ghost" aria-label={`Delete ${p.label}`} onClick={() => del.mutate(p.id)}><Trash2 className="h-4 w-4" /></Button></td></tr>)}</tbody></Table>
+        )}
+      </Card>
+      <Card title="Add a password">
+        <div className="space-y-3">
+          <Field label="Label"><Input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="e.g. Axis Bank statements" /></Field>
+          <Field label="Password"><Input type="password" autoComplete="off" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+          <Field label="Account (optional)" hint="Tried first for this account's statements"><Select value={f.account_id} onChange={(e) => setF({ ...f, account_id: e.target.value })}>
+            <option value="">Any account</option>{accounts.data?.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
+          <ErrorBox error={add.error} />
+          <Button variant="primary" disabled={!f.label || !f.password} loading={add.isPending} onClick={() => add.mutate(undefined)}>Save password</Button>
+        </div>
+      </Card>
+    </div>
   );
 }

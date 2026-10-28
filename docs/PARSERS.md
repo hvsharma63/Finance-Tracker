@@ -37,13 +37,38 @@ Code: `backend/app/services/imports/`
 
 ## Current coverage — honest status
 
-| Parser | Version | Tested against |
-|---|---|---|
-| generic_table | 1.0 | Synthetic CSV (preamble, opening/closing rows, separate debit/credit), XLSX (native dates/floats), HTML-as-XLS, card CSV with `Cr` suffix |
-| generic_pdf | 1.0 | Synthetic multi-page PDFs (ruled and unruled, wrapped narrations, page footers, opening/closing lines), password-protected PDF, scanned image PDF via Tesseract (in the Docker image) |
+| Parser | Version | Tested against | Result |
+|---|---|---|---|
+| axis_savings_pdf | 1.0 | 1 real Axis savings statement (Sep 2026, 4 pages) | 17/17 rows; opening 50,037.68 + movements = closing 40,218.12 |
+| sbi_savings_pdf | 1.0 | 1 real SBI savings statement (Sep 2026, 5 pages) | 64/64 rows; running balance verified on every row; closing 16,785.13 |
+| axis_credit_card_pdf | 1.0 | Axis Visa Privilege + Neo RuPay (Oct 2026) | 2/2 and 27/27 rows; reconciles; summary debit/credit totals match |
+| idfc_first_credit_card_pdf | 1.0 | IDFC FIRST Select (Oct 2026, 5 pages) | 11/11 rows incl. EMI amortisation lines; reconciles; summary totals match |
+| rbl_credit_card_pdf | 1.0 | IRCTC RBL + BookMyShow Play (Oct 2026) | 2/2 and 5/5 rows; reconciles to the exact (unrounded) outstanding |
+| generic_table | 1.0 | Synthetic CSV/XLSX/HTML-XLS | — |
+| generic_pdf | 1.0 | Synthetic PDFs, scanned PDF via OCR | — |
 
-No real bank, card or investment statement has been tested yet. **No institution is claimed as
-supported.**
+Every institution parser has (a) a committed synthetic replica of its layout in
+`backend/tests/fixtures/bank_layouts.py` with every row asserted, and (b) a local test against
+the real statement (`tests/parsers/test_real_samples.py`, expectations in the git-ignored
+`sample-data/private/expectations.json`) that fails if any row, total or balance changes.
+
+### Format notes and known limitations per parser
+
+* **Axis savings** — narrations wrap by pixel width, so a name can split mid-word
+  (`HARSHVARDHA N`); joined with a space. Per-row balance is blank in this layout, so only
+  opening/closing is checked.
+* **SBI savings** — narrations are truncated by SBI itself at ~50 characters. The opening
+  balance label is garbled in the PDF text; it is matched by its `on dd-mm-yy:` tail.
+* **Axis cards** — merchant category is kept in the row's source data. The page-2 "MAD
+  calculation" example table is excluded (parsing stops at `End of Statement`).
+* **IDFC FIRST** — narrations are vertically centred; wrapped lines are attached to the row
+  they touch. EMI principal/interest/IGST lines are separate transactions, as on the statement.
+* **RBL** — the PDF has no Dr/Cr text: **credits are green**. Direction is read from colour and
+  cross-checked against "Payments & Credits"; a mismatch is shown as a warning and the
+  statement will not reconcile (nothing is auto-corrected). Total Amount Due is rounded up to
+  the rupee; the exact outstanding from the summary is used. Only the last 2 card digits are
+  printed, so account suggestion also checks institution and account type. Only first-page
+  transaction lists have been seen; longer statements spilling onto page 2 are untested.
 
 Known generic limitations:
 

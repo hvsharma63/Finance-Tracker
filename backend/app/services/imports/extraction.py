@@ -224,8 +224,10 @@ def extract_pdf(path: Path, filename: str, password: str | None = None, force_oc
         text_pages = []
         for i, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ""
-            raw_words = page.extract_words(x_tolerance=1.5, y_tolerance=2, keep_blank_chars=False)
-            words = [Word(w["text"], w["x0"], w["x1"], w["top"], w["bottom"]) for w in raw_words]
+            raw_words = page.extract_words(x_tolerance=1.5, y_tolerance=2, keep_blank_chars=False,
+                                           extra_attrs=["fontname", "non_stroking_color"])
+            words = [Word(w["text"], w["x0"], w["x1"], w["top"], w["bottom"], w.get("fontname") or "",
+                          tuple(w.get("non_stroking_color") or ())) for w in raw_words]
             doc.pages.append(ExtractedPage(number=i, text=text, words=words, width=float(page.width)))
             text_pages.append(text)
             try:

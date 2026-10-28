@@ -22,7 +22,7 @@ backend process/container.
 | XSS | React escapes output; strict Content-Security-Policy from nginx; API responses `default-src 'none'` |
 | Uploads | Size limit (25 MB), real type sniffed from content (PDF/ZIP-XLSX/OLE-XLS/HTML/CSV), extension allow-list, binary rejection, filename sanitised, content-addressed storage, path traversal guarded |
 | Statement files | Never served by the web server; only reachable through import logic; container dir mode 700, non-root user |
-| PDF passwords | Used once in memory to open the file; never stored or logged |
+| PDF passwords | Saved only if you choose (default on at upload, or Settings → PDF passwords). Encrypted with Fernet (AES-128-CBC + HMAC-SHA256) under a key derived from `SECRET_KEY`; never returned by the API, never logged. Changing `SECRET_KEY` makes them unreadable (re-enter them). Included, still encrypted, in backups |
 | Account numbers | Only the last four digits are stored |
 | Exports | CSV/Excel cells starting with `= + - @` are neutralised against formula injection |
 | Errors/logging | Generic 500 responses; no statement contents or amounts logged |

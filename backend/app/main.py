@@ -63,7 +63,7 @@ def create_app() -> FastAPI:
                                                                 "message": "Internal error", "details": None}})
 
     for r in (system.health_router, auth.router, accounts.router, transactions.router, categories.router,
-              imports.router, imports.profiles_router, reconciliation.router, reports.router, investments.router,
+              imports.router, imports.profiles_router, imports.passwords_router, reconciliation.router, reports.router, investments.router,
               budgets.router, system.router):
         app.include_router(r, prefix="/api")
     return app

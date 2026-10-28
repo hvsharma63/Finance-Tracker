@@ -3,6 +3,7 @@
   python -m app.cli backup [--no-documents]
   python -m app.cli restore <path-to-zip> --yes
   python -m app.cli purge-documents [--days N]
+  python -m app.cli add-pdf-password "<label>"   (password read from stdin or prompt)
   python -m app.cli reset-password <username>
 """
 
@@ -26,6 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--yes", action="store_true", help="confirm replacing ALL current data")
     p = sub.add_parser("purge-documents")
     p.add_argument("--days", type=int)
+    pw = sub.add_parser("add-pdf-password", help="save a statement PDF password (read from stdin/prompt)")
+    pw.add_argument("label")
     u = sub.add_parser("reset-password")
     u.add_argument("username")
     args = ap.parse_args(argv)
@@ -48,6 +51,13 @@ def main(argv: list[str] | None = None) -> int:
             from app.services.imports.retention import purge_old_documents
 
             print(f"Removed {purge_old_documents(db, args.days)} stored statement file(s).")
+        elif args.cmd == "add-pdf-password":
+            from app.services.imports import passwords
+
+            secret = sys.stdin.readline().rstrip("\r\n") if not sys.stdin.isatty() else getpass.getpass("PDF password: ")
+            p = passwords.save(db, args.label, secret)
+            db.commit()
+            print(f"Saved PDF password #{p.id} “{p.label}”.")
         elif args.cmd == "reset-password":
             from app.core.security import hash_password, validate_password_strength
             from app.models import User, UserSession

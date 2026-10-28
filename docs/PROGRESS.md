@@ -23,8 +23,12 @@ Status as of 2026-10-28. ✅ implemented and tested · 🟡 implemented, limited
 - ✅ Transactional commit, idempotent commit, delete with impact check, controlled reprocess
 - ✅ Layout/parser-version change warnings, document retention
 
-## Phase 4 — Parsers from your statements ⏳
-- ⏳ **Needs your sample statements.** No institution-specific parser exists yet; none is claimed.
+## Phase 4 — Parsers from your statements 🟡
+- ✅ Axis savings, SBI savings, Axis cards (Visa Privilege, Neo RuPay), IDFC FIRST Select, RBL cards (IRCTC, BookMyShow) — validated row-by-row on real statements (2026-10-28)
+- ✅ Shared layout engine (word coordinates, fonts, colours, top/centre-aligned narrations)
+- ✅ Saved, encrypted PDF passwords tried automatically
+- ⏳ Investment statements (CAS / broker) — next, when samples are provided
+- ⏳ More months of each account to confirm layout stability
 
 ## Phase 5 — Reconciliation ✅
 - ✅ Transfer / card-payment / investment / loan / refund suggestions with reasons and scores
@@ -59,7 +63,7 @@ Status as of 2026-10-28. ✅ implemented and tested · 🟡 implemented, limited
 
 | Suite | Command | Result |
 |---|---|---|
-| Backend unit + integration + acceptance A–H | `cd backend; .\.venv\Scripts\python -m pytest` | 84 passed |
+| Backend unit + integration + acceptance A–H + parsers | `cd backend; .\.venv\Scripts\python -m pytest` | 108 passed (incl. 7 local real-statement regressions) |
 | Backend lint | `.\.venv\Scripts\ruff check app tests` | clean |
 | Frontend unit | `cd frontend; npm test` | 5 passed |
 | Frontend type check | `npm run typecheck` | clean |
@@ -67,7 +71,7 @@ Status as of 2026-10-28. ✅ implemented and tested · 🟡 implemented, limited
 | OCR in Docker | manual script (see conversation log) | image-only PDF parsed, balance chain passed |
 
 ## Known limitations
-- Only generic parsers; real Indian bank/card/AMC layouts are untested until samples are provided.
+- Institution parsers are validated on one statement per layout; other months/variants may differ (layout-change warnings will flag it).
 - Classification is computed in Python per request — fine for tens of thousands of transactions; very large ledgers may need caching.
 - Net-worth history uses current account definitions and the latest valuation on or before each month end.
 - Login rate limiting is in-memory.

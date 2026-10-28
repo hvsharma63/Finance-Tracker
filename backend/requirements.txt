@@ -12,3 +12,4 @@ xlrd==2.0.1
 pdfplumber==0.11.4
 pytesseract==0.3.13
 argon2-cffi==23.1.0
+cryptography==50.0.2

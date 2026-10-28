@@ -25,6 +25,7 @@ function UploadForm({ initialAccount, onDone }: { initialAccount?: string; onDon
   const [stype, setStype] = useState("");
   const [password, setPassword] = useState("");
   const [forceOcr, setForceOcr] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [parser, setParser] = useState("");
   const upload = useMut(async () => {
     if (!file) throw new Error("Choose a file");
@@ -33,6 +34,7 @@ function UploadForm({ initialAccount, onDone }: { initialAccount?: string; onDon
     if (account) fd.append("account_id", account);
     if (stype) fd.append("statement_type", stype);
     if (password) fd.append("password", password);
+    fd.append("remember_password", String(remember));
     if (parser) fd.append("parser_name", parser);
     if (forceOcr) fd.append("force_ocr", "true");
     return api.post<Batch>("/imports", fd);
@@ -57,9 +59,15 @@ function UploadForm({ initialAccount, onDone }: { initialAccount?: string; onDon
             <option value="bank">Bank account</option><option value="credit_card">Credit card</option>
           </Select>
         </Field>
-        <Field label="PDF password (if protected)" hint="Used once to open the file; never stored.">
-          <Input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </Field>
+        <div>
+          <Field label="PDF password (if protected)" hint="Leave empty to try your saved passwords automatically.">
+            <Input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+          <label className="mt-1 flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            Remember this password (stored encrypted, see Settings → PDF passwords)
+          </label>
+        </div>
         <Field label="Parser">
           <Select value={parser} onChange={(e) => setParser(e.target.value)}>
             <option value="">Automatic (best match)</option>

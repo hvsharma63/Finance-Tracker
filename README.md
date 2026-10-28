@@ -46,14 +46,18 @@ Full instructions, the non-Docker path and upgrades: [docs/SETUP.md](docs/SETUP.
 
 | Parser | Formats | Status |
 |---|---|---|
+| `axis_savings_pdf` | Axis Bank savings e-statement (PDF) | Tested on a real statement (Sep 2026) |
+| `sbi_savings_pdf` | SBI savings e-statement (PDF) | Tested on a real statement (Sep 2026) |
+| `axis_credit_card_pdf` | Axis Bank credit cards — Visa Privilege, Neo RuPay (PDF) | Tested on 2 real statements (Oct 2026) |
+| `idfc_first_credit_card_pdf` | IDFC FIRST Bank credit card — FIRST Select (PDF) | Tested on a real statement (Oct 2026) |
+| `rbl_credit_card_pdf` | RBL Bank credit cards — IRCTC, BookMyShow Play (PDF) | Tested on 2 real statements (Oct 2026) |
 | `generic_table` | CSV/XLSX/XLS with a recognisable header (Date, Narration/Particulars, Withdrawal/Debit, Deposit/Credit, Amount + Dr/Cr, Balance…) | Tested on synthetic statements |
 | `generic_pdf` | Digital PDFs with ruled tables, unruled column layouts, or `date … amount balance` lines; scanned PDFs via Tesseract | Tested on synthetic statements |
 | Saved formats | Any CSV/Excel layout you map once in the UI | Per your mapping |
 
-**No institution-specific parser has been built yet**, because none has been validated against a
-real statement. Generic parsing handles many exports, but bank PDFs vary. To add a dedicated,
-regression-tested parser for your bank/card/investment statements, see
-[docs/PARSERS.md](docs/PARSERS.md) and share a sample as described there.
+Institution parsers are listed only for layouts validated row-by-row against real statements;
+other variants of the same bank may differ. Password-protected PDFs open automatically with
+saved passwords. To add another format see [docs/PARSERS.md](docs/PARSERS.md).
 
 ## Documentation
 

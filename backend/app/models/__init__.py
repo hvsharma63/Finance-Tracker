@@ -18,4 +18,4 @@ from app.models.ledger import (  # noqa: F401
     Transaction,
     TransactionRelationship,
 )
-from app.models.system import AppSetting, AuditEvent, BackupRecord, User, UserSession  # noqa: F401
+from app.models.system import AppSetting, AuditEvent, BackupRecord, PdfPassword, User, UserSession  # noqa: F401

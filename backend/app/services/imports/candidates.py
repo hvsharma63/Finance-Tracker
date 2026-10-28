@@ -16,6 +16,12 @@ class Word:
     x1: float
     top: float
     bottom: float
+    font: str = ""
+    color: tuple = ()  # non-stroking (fill) colour as reported by pdfplumber
+
+    @property
+    def is_bold(self) -> bool:
+        return "bold" in self.font.lower()
 
     @property
     def xc(self) -> float:

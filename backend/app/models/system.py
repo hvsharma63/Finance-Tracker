@@ -54,3 +54,16 @@ class BackupRecord(IdMixin, Base):
     status: Mapped[str] = mapped_column(String(10), nullable=False)  # success|failed
     details: Mapped[dict | None] = mapped_column(JSONType)
     error_message: Mapped[str | None] = mapped_column(Text)
+
+
+class PdfPassword(IdMixin, Base):
+    """An encrypted PDF statement password (see services/imports/passwords.py)."""
+
+    __tablename__ = "pdf_passwords"
+
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    secret_enc: Mapped[str] = mapped_column(Text, nullable=False)
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"))
+    use_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

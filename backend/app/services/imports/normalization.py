@@ -44,7 +44,9 @@ def join_continuation(prev: str | None, extra: str | None) -> str:
     a, b = clean_text(prev), clean_text(extra)
     if not a or not b:
         return a or b
-    if a[-1] in "/-_@.:" or b[0] in "/-@":
+    if a[-1] in "/-_@.:" and not (len(a) > 1 and a[-2] == " "):
+        return a + b
+    if b[0] in "/-@" and not (len(b) > 1 and b[1] == " "):
         return a + b
     return f"{a} {b}"
 

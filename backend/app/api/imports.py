@@ -45,7 +45,8 @@ def list_parsers():
 @router.post("", status_code=201)
 async def upload(file: UploadFile = File(...), account_id: int | None = Form(None), parser_name: str | None = Form(None),
                  profile_id: int | None = Form(None), password: str | None = Form(None),
-                 statement_type: str | None = Form(None), force_ocr: bool = Form(False), db: Session = Depends(get_db)):
+                 statement_type: str | None = Form(None), force_ocr: bool = Form(False),
+                 remember_password: bool = Form(True), db: Session = Depends(get_db)):
     limit = get_settings().max_upload_mb * 1024 * 1024
     data = await file.read(limit + 1)
     if len(data) > limit:
@@ -55,7 +56,8 @@ async def upload(file: UploadFile = File(...), account_id: int | None = Form(Non
     try:
         batch = service.create_preview(db, service.UploadRequest(
             filename=file.filename or "statement", data=data, account_id=account_id, parser_name=parser_name or None,
-            profile_id=profile_id, password=password or None, statement_type=statement_type or None, force_ocr=force_ocr))
+            profile_id=profile_id, password=password or None, statement_type=statement_type or None, force_ocr=force_ocr,
+            remember_password=remember_password))
     except ExtractionError as e:
         raise AppError(str(e), code=e.code)
     db.commit()
@@ -242,5 +244,50 @@ def delete_profile(pid: int, db: Session = Depends(get_db)):
     p = get_or_404(db, ParserProfile, pid, "Parser profile")
     db.execute(ImportBatch.__table__.update().where(ImportBatch.parser_profile_id == pid).values(parser_profile_id=None))
     db.delete(p)
+    db.commit()
+    return {"deleted": pid}
+
+
+passwords_router = protected_router(prefix="/pdf-passwords", tags=["imports"])
+
+
+def _pw(p) -> dict:
+    return {"id": p.id, "label": p.label, "account_id": p.account_id, "use_count": p.use_count,
+            "created_at": ser.iso(p.created_at), "last_used_at": ser.iso(p.last_used_at)}
+
+
+@passwords_router.get("")
+def list_passwords(db: Session = Depends(get_db)):
+    """Labels only — saved passwords are never returned."""
+    from app.models import PdfPassword
+
+    return [_pw(p) for p in db.scalars(select(PdfPassword).order_by(PdfPassword.label))]
+
+
+class PasswordIn(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=1, max_length=200)
+    account_id: int | None = None
+
+
+@passwords_router.post("", status_code=201)
+def add_password(body: PasswordIn, db: Session = Depends(get_db)):
+    from app.services.imports import passwords
+    from app.services.ledger import audit
+
+    p = passwords.save(db, body.label, body.password, body.account_id)
+    audit.record(db, "pdf_password", p.id, "saved", {"label": p.label})
+    db.commit()
+    return _pw(p)
+
+
+@passwords_router.delete("/{pid}")
+def delete_password(pid: int, db: Session = Depends(get_db)):
+    from app.models import PdfPassword
+    from app.services.ledger import audit
+
+    p = get_or_404(db, PdfPassword, pid, "Saved password")
+    db.delete(p)
+    audit.record(db, "pdf_password", pid, "deleted")
     db.commit()
     return {"deleted": pid}

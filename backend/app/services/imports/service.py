@@ -29,7 +29,7 @@ from app.models import (
     TransactionRelationship,
 )
 from app.services.categorization.engine import apply_rules
-from app.services.imports import extraction, storage
+from app.services.imports import extraction, passwords, storage
 from app.services.imports.candidates import CandidateRow, ExtractedDocument, ParsedStatement, ParseOptions
 from app.services.imports.metadata import mask_identifier
 from app.services.imports.normalization import clean_text, detect_transaction_type, normalize_description
@@ -53,6 +53,7 @@ class UploadRequest:
     password: str | None = None
     statement_type: str | None = None
     force_ocr: bool = False
+    remember_password: bool = True
 
 
 def _minor(d: Decimal | None, currency: str = "INR") -> int | None:
@@ -219,11 +220,22 @@ def _suggest_account(db: Session, ps: ParsedStatement) -> int | None:
     hint = mask_identifier(ps.account_hint)
     if not hint:
         return None
-    last4 = hint[-4:]
+    digits = re.sub(r"\D", "", hint)[-4:]
+    if not digits:
+        return None
+    wanted_type = "credit_card" if ps.statement_type == "credit_card" else None
+    matches = []
     for a in db.scalars(select(Account).where(Account.is_active.is_(True))):
-        if a.masked_identifier and re.sub(r"\D", "", a.masked_identifier)[-4:] == last4:
-            return a.id
-    return None
+        mine = re.sub(r"\D", "", a.masked_identifier or "")[-4:]
+        # some issuers print only the last 2 digits; compare the overlapping suffix
+        n = min(len(mine), len(digits))
+        if n >= 2 and mine[-n:] == digits[-n:]:
+            if wanted_type and a.account_type != wanted_type:
+                continue
+            if ps.institution and a.institution and n < 4 and                     ps.institution.split()[0].lower() not in a.institution.lower():
+                continue
+            matches.append(a.id)
+    return matches[0] if len(matches) == 1 else None
 
 
 def _layout_warnings(db: Session, batch: ImportBatch, confidence: float) -> list[str]:
@@ -270,7 +282,7 @@ def create_preview(db: Session, req: UploadRequest) -> ImportBatch:
     db.flush()
     try:
         _parse_into(db, batch, req.data, path, ParseOptions(statement_type=req.statement_type),
-                    req.parser_name, req.profile_id, req.password, req.force_ocr)
+                    req.parser_name, req.profile_id, req.password, req.force_ocr, req.remember_password)
     except extraction.ExtractionError as e:
         batch.status = "failed"
         batch.error_message = str(e)
@@ -288,16 +300,47 @@ def create_preview(db: Session, req: UploadRequest) -> ImportBatch:
     return batch
 
 
+def _extract(db: Session, batch: ImportBatch, data: bytes, path, password: str | None,
+             force_ocr: bool) -> tuple[ExtractedDocument, str]:
+    """Extract, trying saved PDF passwords when the file is protected and none was given."""
+    try:
+        doc = extraction.extract(data, batch.filename, path=path, password=password, force_ocr=force_ocr)
+        return doc, ("provided" if password and batch.file_type == "pdf" else "none")
+    except extraction.ExtractionError as e:
+        if e.code != "pdf_password_required" or password:
+            raise
+    for saved, pw in passwords.candidates(db, batch.account_id):
+        try:
+            doc = extraction.extract(data, batch.filename, path=path, password=pw, force_ocr=force_ocr)
+        except extraction.ExtractionError as e:
+            if e.code == "pdf_password_incorrect":
+                continue
+            raise
+        passwords.mark_used(saved, batch.account_id)
+        doc.warnings.append(f"Opened with the saved password “{saved.label}”.")
+        return doc, f"saved:{saved.id}"
+    raise extraction.ExtractionError(
+        "This PDF is password-protected and none of the saved passwords opened it. Enter its password.",
+        "pdf_password_required")
+
+
 def _parse_into(db: Session, batch: ImportBatch, data: bytes, path, options: ParseOptions,
-                parser_name: str | None, profile_id: int | None, password: str | None, force_ocr: bool) -> None:
-    doc = extraction.extract(data, batch.filename, path=path, password=password, force_ocr=force_ocr)
+                parser_name: str | None, profile_id: int | None, password: str | None, force_ocr: bool,
+                remember_password: bool = True) -> None:
+    doc, pw_source = _extract(db, batch, data, path, password, force_ocr)
     ps, confidence, profile, ranking = _run_parser(db, doc, parser_name, profile_id, options)
+    if pw_source == "provided" and remember_password:
+        label = " ".join(x for x in (ps.institution, {"credit_card": "credit card", "bank": "bank account"}
+                                     .get(ps.statement_type, ps.statement_type)) if x) or batch.filename
+        saved = passwords.save(db, label, password, batch.account_id)
+        pw_source = f"saved:{saved.id}"
+        doc.warnings.append(f"Password remembered as “{saved.label}” for future statements.")
     batch.parser_name, batch.parser_version = ps.parser_name, ps.parser_version
     batch.parser_confidence = round(confidence, 3)
     batch.parser_profile_id = profile.id if profile else None
     batch.detected_institution = ps.institution
     batch.detected_statement_type = ps.statement_type
-    batch.extraction_info = doc.info() | {"parser_ranking": ranking}
+    batch.extraction_info = doc.info() | {"parser_ranking": ranking, "password": pw_source}
     if not ps.candidate_headers:
         ps.candidate_headers = [c["headers"] for c in candidate_headers(doc.tables)]
     batch.statement_meta = _meta_from(ps)
